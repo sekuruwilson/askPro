@@ -1,64 +1,59 @@
-const { OpenAI } = require('openai');
+const OpenAI = require('openai');
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
-
-/**
- * Generates an embedding for a single text string.
- * @param {string} text - The input text to embed
- * @returns {Promise<Array<number>>} The 1536-dimensional vector embedding
- */
-async function embedText(text) {
-  try {
-    const response = await openai.embeddings.create({
-      model: 'text-embedding-3-small',
-      input: text.replace(/\n/g, ' ')
+class EmbedService {
+  constructor() {
+    this.openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
     });
-    return response.data[0].embedding;
-  } catch (error) {
-    console.error('Embedding creation failed:', error);
-    throw error;
+    this.model = 'text-embedding-3-small';
   }
-}
 
-/**
- * Generates embeddings for a batch of text strings, in chunks of 100.
- * @param {Array<string>} texts - The array of text strings to embed
- * @returns {Promise<Array<Array<number>>>} The array of embeddings
- */
-async function embedBatch(texts) {
-  if (!texts || texts.length === 0) return [];
-  
-  try {
-    const embeddings = [];
-    const batchSize = 100;
-
-    for (let i = 0; i < texts.length; i += batchSize) {
-      const batchTexts = texts.slice(i, i + batchSize).map(t => t.replace(/\n/g, ' '));
-      
-      const response = await openai.embeddings.create({
-        model: 'text-embedding-3-small',
-        input: batchTexts
+  /**
+   * Embeds a single text string.
+   * @param {string} text
+   * @returns {Promise<Array<number>>}
+   */
+  async embedText(text) {
+    try {
+      const response = await this.openai.embeddings.create({
+        model: this.model,
+        input: text,
       });
-
-      const batchEmbeddings = response.data.map(item => item.embedding);
-      embeddings.push(...batchEmbeddings);
-
-      // Add a small delay if there are more batches to respect rate limits
-      if (i + batchSize < texts.length) {
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
+      return response.data[0].embedding;
+    } catch (error) {
+      console.error('Embedding creation failed:', error);
+      throw error;
     }
+  }
 
-    return embeddings;
-  } catch (error) {
-    console.error('Batch embedding creation failed:', error);
-    throw error;
+  /**
+   * Embeds an array of text strings in batches of 100 to prevent OpenAI rate limit issues.
+   * @param {Array<string>} texts
+   * @returns {Promise<Array<Array<number>>>}
+   */
+  async embedBatch(texts) {
+    try {
+      const batchSize = 100;
+      const embeddings = [];
+
+      for (let i = 0; i < texts.length; i += batchSize) {
+        const batch = texts.slice(i, i + batchSize);
+        const response = await this.openai.embeddings.create({
+          model: this.model,
+          input: batch,
+        });
+        
+        // Extract embeddings in order
+        const batchEmbeddings = response.data.map(item => item.embedding);
+        embeddings.push(...batchEmbeddings);
+      }
+
+      return embeddings;
+    } catch (error) {
+      console.error('Batch embedding creation failed:', error);
+      throw error;
+    }
   }
 }
 
-module.exports = {
-  embedText,
-  embedBatch
-};
+module.exports = new EmbedService();

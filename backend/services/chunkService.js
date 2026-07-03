@@ -1,47 +1,43 @@
 /**
- * Chunks a PDF page-by-page so that no chunk ever crosses a page boundary.
- * Each page is split into sub-chunks only if the page text is too long.
- * Every chunk is tagged with the EXACT page number it came from.
- *
- * @param {Array<{pageNum: number, text: string}>} pages - Per-page text from pdfService
- * @param {number} wordsPerChunk - Max words per chunk (default 400)
+ * Split pages of text into overlapping word-based chunks.
+ * @param {Array<{pageNum: number, text: string}>} pages - Array of page objects with pageNum and text
+ * @param {number} chunkSize - Number of words per chunk (default 500)
+ * @param {number} overlap - Overlapping words between chunks (default 50)
  * @returns {Array<{content: string, chunkIndex: number, pageNumber: number}>}
  */
-function chunkText(pages, wordsPerChunk = 400) {
-  if (!pages || pages.length === 0) return [];
-
+function chunkText(pages, chunkSize = 500, overlap = 50) {
   const chunks = [];
-  let chunkIndex = 0;
+  let globalIndex = 0;
 
   for (const page of pages) {
-    if (!page.text || page.text.trim().length < 80) {
-      // Skip nearly-empty pages (cover pages, page numbers, blank pages)
-      continue;
-    }
+    const pageText = page.text ? page.text.trim() : '';
+    if (!pageText) continue;
 
-    const words = page.text.split(/\s+/).filter(w => w.length > 0);
+    // Split by whitespace to get words
+    const words = pageText.split(/\s+/);
+    if (words.length === 0 || (words.length === 1 && words[0] === '')) continue;
 
-    if (words.length <= wordsPerChunk) {
-      // Short page — treat the entire page as one chunk
-      chunks.push({
-        content: words.join(' '),
-        chunkIndex: chunkIndex++,
-        pageNumber: page.pageNum
-      });
-    } else {
-      // Long page — split into sub-chunks, ALL tagged with this page's number
-      let i = 0;
-      while (i < words.length) {
-        const slice = words.slice(i, i + wordsPerChunk);
-        const content = slice.join(' ').trim();
-        if (content.length >= 80) {
-          chunks.push({
-            content,
-            chunkIndex: chunkIndex++,
-            pageNumber: page.pageNum  // always the SAME page number for all sub-chunks
-          });
-        }
-        i += wordsPerChunk; // no overlap needed — same page, sequential
+    let start = 0;
+    while (start < words.length) {
+      const end = Math.min(start + chunkSize, words.length);
+      const chunkWords = words.slice(start, end);
+      const content = chunkWords.join(' ').trim();
+
+      // Filter out chunks shorter than 100 characters to skip page numbers, headers, and noise
+      if (content.length >= 100) {
+        chunks.push({
+          content,
+          chunkIndex: globalIndex++,
+          pageNumber: page.pageNum
+        });
+      }
+
+      // Advance start by step size (chunkSize - overlap)
+      const step = chunkSize - overlap;
+      if (step <= 0) {
+        start += chunkSize; // Fallback if overlap is somehow >= chunkSize
+      } else {
+        start += step;
       }
     }
   }

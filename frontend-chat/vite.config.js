@@ -2,10 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-  // esbuild explicitly handles jsx mapping to clear the bundler warning
-  esbuild: {
-    jsx: 'automatic', 
-  },
+
   plugins: [react()],
   optimizeDeps: {
     include: ['remark-gfm'],
