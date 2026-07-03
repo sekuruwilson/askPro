@@ -3,8 +3,8 @@ import { LayoutDashboard, Upload, MessageSquare } from 'lucide-react'
 import clsx from 'clsx'
 
 const navItems = [
-  { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard & Library' },
-  { to: '/admin/upload',    icon: Upload,          label: 'Upload & Index' },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard & Library' },
+  { to: '/upload',    icon: Upload,          label: 'Upload & Index' },
 ]
 
 export default function AdminLayout() {
